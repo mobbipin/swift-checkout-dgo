@@ -15,6 +15,8 @@ final class CheckoutFlowUITests: XCTestCase {
     // MARK: Helpers
 
     private func snap(_ name: String) {
+        // Let screen transitions (0.28s) finish so captures aren't mid-fade.
+        Thread.sleep(forTimeInterval: 0.5)
         let shot = XCUIScreen.main.screenshot()
         let attachment = XCTAttachment(screenshot: shot)
         attachment.name = name
