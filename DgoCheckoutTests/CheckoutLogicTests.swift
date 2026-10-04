@@ -25,12 +25,11 @@ final class CatalogTests: XCTestCase {
         XCTAssertEqual(formatMonthlyRate(Catalog.findSku(.zoneB, .plus, .m12)!), "$8.33/mo")
     }
 
-    func testStripeThreeMonthChargesMonthlyRateToday() {
-        XCTAssertEqual(checkoutPriceForSku(Catalog.findSku(.zoneB, .plus, .m03)!), 10.00, accuracy: 0.001)
-        XCTAssertEqual(checkoutPriceForSku(Catalog.findSku(.zoneA, .plus, .m03)!), 5.00, accuracy: 0.001)
-        // Nepal and 12-month plans charge the full price.
-        XCTAssertEqual(checkoutPriceForSku(Catalog.findSku(.nepal, .plus, .m03)!), 799)
-        XCTAssertEqual(checkoutPriceForSku(Catalog.findSku(.zoneB, .plus, .m12)!), 99.99)
+    func testStripeThreeMonthChargesFullQuarterlyPrice() {
+        let change = resolvePlanChange(nil, Catalog.findSku(.zoneB, .plus, .m03), manageMode: false)
+        XCTAssertEqual(change?.kind, .new)
+        XCTAssertEqual(change?.amount, 29.99)
+        XCTAssertEqual(billingCadenceLabel(.m03, .zoneB), "Billed every 3 months")
     }
 
     func testSavingsAndCompareAt() {
@@ -39,7 +38,7 @@ final class CatalogTests: XCTestCase {
         XCTAssertEqual(save.percent, 25)
         XCTAssertNil(savingsVsMonthly(.nepal, .plus, .m01))
         XCTAssertEqual(compareAtPrice(.nepal, .plus, .m03), 897)
-        XCTAssertEqual(compareAtPrice(.zoneB, .plus, .m03), 8.99)
+        XCTAssertEqual(compareAtPrice(.zoneB, .plus, .m03), 26.97, accuracy: 0.001)
     }
 
     func testCoupons() {
@@ -50,7 +49,7 @@ final class CatalogTests: XCTestCase {
 
     func testCadenceLabels() {
         XCTAssertEqual(billingCadenceLabel(.m03, .nepal), "One-time payment")
-        XCTAssertEqual(billingCadenceLabel(.m03, .zoneA), "Monthly · 3 months")
+        XCTAssertEqual(billingCadenceLabel(.m03, .zoneA), "Billed every 3 months")
         XCTAssertEqual(billingCadenceLabel(.m12, .zoneC), "Billed annually")
         XCTAssertEqual(billingCadenceLabel(.m01, .zoneB), "Billed monthly")
     }
@@ -107,6 +106,22 @@ final class PlanChangeTests: XCTestCase {
         XCTAssertEqual(change(plus3, .zoneB, .mobile, .m03)?.kind, .providerDowngrade)
         XCTAssertEqual(change(plus3, .zoneB, .plus, .m01)?.kind, .providerDowngrade)
         XCTAssertEqual(change(plus3, .zoneB, .plus, .m12)?.kind, .providerUpgrade)
+        XCTAssertEqual(change(plus3, .zoneB, .plus, .m12)?.intervalChange, true)
+
+        let mobile3 = session(.zoneB, .mobile, .m03)
+        let sameInterval = change(mobile3, .zoneB, .plus, .m03)!
+        XCTAssertEqual(sameInterval.kind, .providerUpgrade)
+        XCTAssertFalse(sameInterval.intervalChange)
+    }
+
+    func testUpgradeLifecycleNotes() {
+        let plus3 = session(.zoneB, .plus, .m03)
+        XCTAssertEqual(
+            lifecycleNote(plus3, change(plus3, .zoneB, .plus, .m12)),
+            "Starts now. A new billing period begins today, minus credit for unused time. Stripe shows the exact amount."
+        )
+        let mobile3 = session(.zoneB, .mobile, .m03)
+        XCTAssertTrue(lifecycleNote(mobile3, change(mobile3, .zoneB, .plus, .m03)).hasPrefix("Starts now. You pay only for the days left until "))
     }
 
     func testLabels() {
@@ -177,6 +192,33 @@ final class SessionRepositoryTests: XCTestCase {
         XCTAssertEqual(repo.getSession()?.status, .active)
     }
 
+    func testStripeQuarterlyPeriodIsThreeMonths() {
+        let s = repo.sessionFromSku(Catalog.findSku(.zoneB, .plus, .m03)!)
+        XCTAssertEqual(s.nextBillingDate, SessionRepository.addUtcMonths(3))
+        XCTAssertEqual(s.paidThrough, s.nextBillingDate)
+    }
+
+    func testSameIntervalUpgradeKeepsBillingDate() {
+        var current = repo.sessionFromSku(Catalog.findSku(.zoneB, .mobile, .m03)!)
+        current.nextBillingDate = "2026-12-01T00:00:00Z"
+        current.paidThrough = "2026-12-01T00:00:00Z"
+        repo.persistPurchase(Catalog.findSku(.zoneB, .plus, .m03)!, current: current, kind: .providerUpgrade)
+        let after = repo.getSession()!
+        XCTAssertEqual(after.tier, .plus)
+        XCTAssertEqual(after.nextBillingDate, "2026-12-01T00:00:00Z")
+    }
+
+    func testNewIntervalUpgradeStartsFreshPeriod() {
+        var current = repo.sessionFromSku(Catalog.findSku(.zoneB, .plus, .m03)!)
+        current.nextBillingDate = "2026-12-01T00:00:00Z"
+        current.pendingPlan = PendingPlan(skuId: "DGO-ZB-MOB-03M", tier: .mobile, duration: .m03, effectiveDate: "2026-12-01T00:00:00Z")
+        repo.persistPurchase(Catalog.findSku(.zoneB, .plus, .m12)!, current: current, kind: .providerUpgrade)
+        let after = repo.getSession()!
+        XCTAssertEqual(after.duration, .m12)
+        XCTAssertEqual(after.nextBillingDate, SessionRepository.addUtcMonths(12))
+        XCTAssertNil(after.pendingPlan)
+    }
+
     func testOrderRefShape() {
         XCTAssertNotNil(repo.generateOrderRef().range(of: #"^DGO-[0-9A-F]{4}-[0-9A-F]{4}$"#, options: .regularExpression))
     }
@@ -230,7 +272,7 @@ final class ViewModelTests: XCTestCase {
         let vm = makeVM()
         vm.setDevRegion(.zoneB)
         vm.openCheckout()
-        XCTAssertEqual(vm.amount, 10.0, accuracy: 0.001)
+        XCTAssertEqual(vm.amount, 29.99, accuracy: 0.001)
         vm.nextFromPlan()
         vm.submitStripePayment()
         XCTAssertEqual(vm.session?.billingMode, .recurring)

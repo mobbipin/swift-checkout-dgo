@@ -218,7 +218,7 @@ private struct TierCard: View {
         let displayAmount: Double = {
             guard let row else { return 0 }
             if rowChange?.kind == .fixedTierUpgrade { return rowChange!.amount }
-            return checkoutPriceForSku(row)
+            return row.price
         }()
         let accent = Color(argb: meta.accent)
         let state = planStateLabel(rowChange?.kind)
@@ -294,7 +294,7 @@ private struct TierCard: View {
         case .immediateExtension: return "Added after this term"
         default:
             var parts: [String] = []
-            if let row, checkoutPriceForSku(row) > row.price / Double(row.duration.months) + 0.01 {
+            if let row, row.duration != .m01 {
                 parts.append(formatMonthlyRate(row))
             }
             parts.append(billingCadenceLabel(vm.duration, vm.region))

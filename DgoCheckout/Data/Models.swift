@@ -141,6 +141,7 @@ struct PlanChange: Equatable {
     let kind: PlanChangeKind
     let amount: Double
     let allowed: Bool
+    var intervalChange = false
 }
 
 struct CardForm: Equatable {

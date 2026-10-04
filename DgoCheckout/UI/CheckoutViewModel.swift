@@ -45,8 +45,7 @@ final class CheckoutViewModel {
 
     var amount: Double {
         guard let selected = sku else { return 0 }
-        let change = planChange
-        return change?.kind == .new ? checkoutPriceForSku(selected) : (change?.amount ?? selected.price)
+        return planChange?.amount ?? selected.price
     }
 
     var dueAmount: Double { applyCouponAmount(amount, sku?.currency ?? region.currency, coupon) }

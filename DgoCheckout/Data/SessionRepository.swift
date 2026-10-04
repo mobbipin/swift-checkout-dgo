@@ -44,8 +44,7 @@ final class SessionRepository {
 
     func sessionFromSku(_ sku: SubscriptionSku) -> SubscriptionSession {
         let billingMode: BillingMode = sku.region.stripe ? .recurring : .prepaid
-        let paidThroughMonths = billingMode == .prepaid ? sku.duration.months : (sku.duration == .m12 ? 12 : 1)
-        let paidThrough = Self.addUtcMonths(paidThroughMonths)
+        let paidThrough = Self.addUtcMonths(sku.duration.months)
         return SubscriptionSession(
             skuId: sku.id,
             tier: sku.tier,
@@ -81,11 +80,10 @@ final class SessionRepository {
                 next.nextBillingDate = nil
             case (.prepaid, .renewal), (.prepaid, .immediateExtension):
                 next.paidThrough = Self.addMonths(to: current.paidThrough, sku.duration.months)
-            case (.recurring, .providerUpgrade):
+            case (.recurring, .providerUpgrade) where current.duration == sku.duration:
+                // Same interval keeps the billing date; a new interval starts a fresh period today.
                 next.paidThrough = current.paidThrough
                 next.nextBillingDate = current.nextBillingDate
-                next.status = .active
-                next.pendingPlan = nil
             default:
                 break
             }

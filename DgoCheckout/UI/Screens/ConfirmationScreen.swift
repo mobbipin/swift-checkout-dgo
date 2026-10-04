@@ -103,7 +103,7 @@ struct ConfirmationScreen: View {
         switch kind {
         case .fixedTierUpgrade: "Access date unchanged"
         case .providerDowngrade: "Starts on the next bill"
-        case .providerUpgrade: "Billing date kept"
+        case .providerUpgrade: "Next bill \(formatRenewalDate(vm.session?.nextBillingDate))"
         case .renewal, .immediateExtension: "\(sku.duration.label) added after this term"
         default: sku.region == .nepal ? "\(sku.duration.label) of access" : billingCadenceLabel(sku.duration, sku.region)
         }

@@ -64,8 +64,8 @@ SKU IDs follow `DGO-{NP|ZA|ZB|ZC}-{MOB|PLS}-{01M|03M|12M}`, for example `DGO-ZB-
 Rules:
 
 - **1-month plans have no live sports.** 3- and 12-month plans include live sports. Show this on the duration selector.
-- **Stripe 3-month plans charge the monthly rate today** (3-month price ÷ 3, e.g. $29.99 → $10.00) and **bill monthly for 3 months**. Show the monthly amount as the price, not the 3-month total.
-- Stripe 12-month plans bill annually. Stripe 1-month plans bill monthly.
+- **Stripe plans charge the full SKU price once per billing period:** 1 month = monthly, 3 months = **quarterly** (e.g. $29.99 every 3 months), 12 months = annually. In Stripe this is the Price's `interval` + `interval_count` (3-month = `month` × 3).
+- The duration selector may show an equivalent monthly rate (e.g. "$10.00/mo") for comparison, but the price and the charge are the full amount.
 - Nepal is always a one-time payment for the full term.
 
 ---
@@ -98,7 +98,7 @@ When a subscribed user opens checkout from **Account → Manage plan** (Stripe) 
 | Picked plan vs current | Result | Card chip | Button | Due today | What happens |
 | --- | --- | --- | --- | --- | --- |
 | Same SKU | **Current** | "Current" | "Current plan" (disabled) | — | Nothing. Blocked. |
-| Mobile → Plus, or a longer duration | **Upgrade** | "Upgrade" | "Upgrade" | "Price difference" | Applies **now**. The user pays only for the days left in the current billing period. **The billing date does not change.** Any pending downgrade is cleared. |
+| Mobile → Plus, or a longer duration | **Upgrade** | "Upgrade" | "Upgrade" | "Price difference" | Applies **now**, only after payment succeeds. **Same duration:** pays only for the days left; billing date unchanged. **Longer duration:** a new billing period starts today, minus credit for unused time. Any pending downgrade is cleared. |
 | Plus → Mobile, or a shorter duration | **Downgrade** | "Downgrade" | "Schedule downgrade" | "No charge today" | The current plan stays until the next bill. The new plan starts on that date. Saved as `pendingPlan`. |
 
 If the change goes **down in either tier or duration**, treat it as a downgrade, even if the other dimension goes up. Example: Mobile 12M → Plus 3M is a **downgrade** because the duration gets shorter.
@@ -132,7 +132,7 @@ The app only opens a URL. Your backend talks to Stripe.
 4. Watch for the `success_url` / `cancel_url` redirect in the WebView to close it, then show confirmation **after the webhook confirms payment**.
 5. Webhooks: `checkout.session.completed`, `customer.subscription.created`, `invoice.paid`, `invoice.payment_failed`.
 
-For the **3-month plan** (monthly rate, 3 monthly charges), confirm that your existing Stripe mapping already does this, for example with a subscription schedule of 3 monthly iterations. Do not charge the 3-month total up front.
+For the **3-month plan**, check that your mapped Stripe Price is `interval: month`, `interval_count: 3`, so the full price is charged every quarter.
 
 ### 6.2 Promo codes
 
@@ -148,10 +148,12 @@ Nepal keeps its own local coupons (prototype codes `DGO10` and `DGO20`).
 
 ### 6.3 Upgrade (immediate)
 
-- Update the existing subscription's item to the new price with `proration_behavior: always_invoice`, so the price difference for the rest of the period is charged now.
-- Keep the billing anchor, so the next bill date stays the same.
-- If the user must confirm the amount first, preview it with Stripe's upcoming-invoice API, or send them to the **Stripe Customer Portal** in a WebView.
-- Webhook: `customer.subscription.updated`, `invoice.paid`.
+- Replace the subscription item's Price with `proration_behavior: always_invoice` and `payment_behavior: pending_if_incomplete`, so the difference is charged now and the new plan applies **only after that payment succeeds**.
+- **Same interval** (e.g. Mobile 3M → Plus 3M): the billing date stays the same.
+- **Different interval** (e.g. 3M → 12M): accept Stripe's result. The new billing period starts on the day of the change. Do not add remaining days or keep the old end date.
+- Before the user confirms, show Stripe's **upcoming invoice preview**: amount due today, next recurring amount, next billing date. Never show a DGO-calculated estimate as final.
+- Do not grant the higher plan while `pending_update` is set. If payment fails, the user keeps the current plan.
+- Webhooks: `customer.subscription.updated`, `customer.subscription.pending_update_applied`, `invoice.paid`, `invoice.payment_failed`.
 
 ### 6.4 Downgrade (next bill)
 
@@ -207,7 +209,7 @@ Nepal keeps its own local coupons (prototype codes `DGO10` and `DGO20`).
 | Result | Title | "Paid today" row | Schedule row |
 | --- | --- | --- | --- |
 | New | You're in | Amount | Billing frequency, or Nepal "{n} months of access" |
-| Upgrade (Stripe or Nepal tier) | Plan updated | "Price difference" / fee | "Billing date kept" / "Access date unchanged" |
+| Upgrade (Stripe or Nepal tier) | Plan updated | "Price difference" / fee | "Next bill {date}" / "Access date unchanged" |
 | Downgrade | Plan change scheduled | "No charge today" | "Starts on the next bill" |
 | Renewal / extension | Time added | Amount | "{n} months added after this term" |
 
@@ -238,9 +240,10 @@ For backend-driven states (cancelling, pending downgrade), use Stripe **test mod
 
 | # | Toggle | Steps | Expect |
 | --- | --- | --- | --- |
-| 1 | ZB · OFF | Subscribe to Plus 3M | Payment shows Stripe only; due $10.00; "Continue to Stripe · $10.00" |
+| 1 | ZB · OFF | Subscribe to Plus 3M | Payment shows Stripe only; due $29.99, "Billed every 3 months"; "Continue to Stripe · $29.99" |
 | 2 | ZB · OFF | Enter a valid promo code | Due drops; the strike-through shows the original price |
-| 3 | ZA · SUB (Plus 3M) | Manage → Plus 12M | Upgrade chip, "Price difference", billing date unchanged after |
+| 3 | ZA · SUB (Mobile 3M) | Manage → Plus 3M | Upgrade chip, "Price difference", billing date unchanged after |
+| 3b | ZA · SUB (Plus 3M) | Manage → Plus 12M | Upgrade chip; note says a new billing period starts today; next bill in 12 months after |
 | 4 | ZA · SUB (Plus 12M) | Manage → Plus 3M | Downgrade chip, "No charge today", Account shows the pending change |
 | 5 | ZA · SUB | Manage → same plan | "Current plan" button disabled |
 | 6 | ZC · SUB | Account → Cancel → 3 steps | ENDS SOON, "Access until …", pending downgrade cleared |

@@ -7,7 +7,7 @@ func resolvePlanChange(
 ) -> PlanChange? {
     guard let target else { return nil }
     guard manageMode, let current, current.region == target.region else {
-        return PlanChange(kind: .new, amount: checkoutPriceForSku(target), allowed: true)
+        return PlanChange(kind: .new, amount: target.price, allowed: true)
     }
     if current.skuId == target.id {
         return current.billingMode == .recurring
@@ -20,7 +20,8 @@ func resolvePlanChange(
         return PlanChange(
             kind: downgrade ? .providerDowngrade : .providerUpgrade,
             amount: target.price,
-            allowed: true
+            allowed: true,
+            intervalChange: target.duration != current.duration
         )
     }
 
@@ -85,7 +86,9 @@ func lifecycleNote(_ current: SubscriptionSession, _ change: PlanChange?) -> Str
     case .providerDowngrade:
         "Switches on \(formatRenewalDate(current.nextBillingDate ?? current.paidThrough)). No charge today."
     case .providerUpgrade:
-        "Starts now. You pay only for the days left until \(formatRenewalDate(current.nextBillingDate)). Stripe shows the exact amount."
+        change?.intervalChange == true
+            ? "Starts now. A new billing period begins today, minus credit for unused time. Stripe shows the exact amount."
+            : "Starts now. You pay only for the days left until \(formatRenewalDate(current.nextBillingDate)). Stripe shows the exact amount."
     default:
         current.billingMode == .prepaid
             ? "Access until \(formatRenewalDate(current.paidThrough))."

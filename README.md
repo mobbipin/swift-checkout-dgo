@@ -25,7 +25,7 @@ In scope: the checkout (choose plan → pay → confirmation) and the Account sc
 | USA / Europe / AU / NZ | ZB | USD | $29.99 · Stripe |
 | South East Asia | ZC | USD | $17.99 · Stripe |
 
-1-month plans have no live sports. 3-month Stripe plans collect the discounted monthly rate today and bill monthly for 3 months.
+1-month plans have no live sports. Stripe plans charge the full price each period: monthly, every 3 months (quarterly), or annually.
 
 For the partner implementation guide, see [docs/mobiotics-implementation-guide.md](docs/mobiotics-implementation-guide.md).
 
@@ -59,5 +59,5 @@ xcodebuild -project DgoCheckout.xcodeproj -scheme DgoCheckout \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
-- `DgoCheckoutTests`: 26 unit tests covering pricing, coupons, plan-change rules, saved state and payment validation.
-- `DgoCheckoutUITests`: 9 end-to-end flows on the simulator: Nepal wallet and GetPay purchases, the decline card, Nepal plan changes, Stripe purchase with promo, Stripe downgrade / upgrade / cancel / resume, ZA and ZC prices, Account and sign out, and the confirmation countdown.
+- `DgoCheckoutTests`: 30 unit tests covering pricing, coupons, plan-change rules, saved state and payment validation.
+- `DgoCheckoutUITests`: 10 end-to-end flows on the simulator: Nepal wallet and GetPay purchases, the decline card, Nepal plan changes, Stripe purchase with promo, Stripe downgrade / upgrade / cancel / resume, same-interval upgrade keeping the billing date, ZA and ZC prices, Account and sign out, and the confirmation countdown.

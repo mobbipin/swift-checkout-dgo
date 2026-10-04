@@ -279,29 +279,30 @@ final class CheckoutFlowUITests: XCTestCase {
         snap("40-dev-toggle-zb")
         openPlansFromHome()
         assertText("billedIn", "Billed in USD")
-        assertText("tierPrice_PLUS", "$10.00")
-        assertText("summaryPrice", "3 months · $10.00")
+        assertText("tierPrice_PLUS", "$29.99")
+        assertText("summaryPrice", "3 months · $29.99")
         snap("41-zb-plans-plus-3m")
 
         tap("duration_M12")
         assertText("tierPrice_PLUS", "$99.99")
         tap("duration_M03")
         tap("planContinue")
-        assertText("dueToday", "$10.00")
+        assertText("dueToday", "$29.99")
+        assertVisible("Billed every 3 months")
         assertVisible("You’ll finish on Stripe’s secure page.")
         snap("42-zb-stripe-payment")
 
         type("couponInput", "DGO20")
         tap("couponApply")
-        assertText("dueToday", "$8.00")
+        assertText("dueToday", "$23.99")
         dismissKeyboard()
-        XCTAssertEqual(button("stripeButton").label, "Continue to Stripe · $8.00")
+        XCTAssertEqual(button("stripeButton").label, "Continue to Stripe · $23.99")
         snap("43-zb-stripe-promo")
 
         tap("stripeButton")
         assertText("confirmTitle", "You're in")
         assertText("confirm_Payment", "Stripe Checkout")
-        assertText("confirm_Schedule", "Monthly · 3 months")
+        assertText("confirm_Schedule", "Billed every 3 months")
         snap("44-zb-confirmation")
     }
 
@@ -344,10 +345,11 @@ final class CheckoutFlowUITests: XCTestCase {
         assertText("tierState_PLUS", "Upgrade")
         tap("planContinue")
         assertText("dueToday", "Price difference")
+        assertText("payLifecycleNote", "Starts now. A new billing period begins today, minus credit for unused time. Stripe shows the exact amount.")
         snap("56-zb-upgrade-payment")
         tap("stripeButton")
         assertText("confirmTitle", "Plan updated")
-        assertText("confirm_Schedule", "Billing date kept")
+        XCTAssertTrue(text("confirm_Schedule").label.hasPrefix("Next bill "))
         snap("57-zb-upgrade-confirmation")
         goHomeFromConfirmation()
 
@@ -386,7 +388,7 @@ final class CheckoutFlowUITests: XCTestCase {
     func test07_ZonesAAndCPricing() {
         dev("ZA")
         openPlansFromHome()
-        assertText("tierPrice_PLUS", "$5.00")
+        assertText("tierPrice_PLUS", "$14.99")
         tap("duration_M12")
         assertText("tierPrice_PLUS", "$50.99")
         snap("70-za-plans-12m")
@@ -396,7 +398,7 @@ final class CheckoutFlowUITests: XCTestCase {
         openPlansFromHome()
         // The chosen duration carries over between checkouts (same as the Kotlin app).
         tap("duration_M03")
-        assertText("tierPrice_PLUS", "$6.00")
+        assertText("tierPrice_PLUS", "$17.99")
         tap("pagerDot_MOBILE")
         tap("duration_M01")
         assertText("tierPrice_MOBILE", "$4.99")
@@ -426,6 +428,38 @@ final class CheckoutFlowUITests: XCTestCase {
         XCTAssertTrue(button("driveSeePlans").waitForExistence(timeout: 5))
         openAccount()
         assertText("accountBadge", "GUEST")
+    }
+
+    func test10_StripeSameIntervalUpgradeKeepsBillingDate() {
+        // Buy ZA Mobile 3M, then upgrade to Plus 3M: same interval, billing date unchanged.
+        dev("ZA")
+        openPlansFromHome()
+        tap("pagerDot_MOBILE")
+        tap("duration_M03")
+        assertText("tierPrice_MOBILE", "$9.99")
+        tap("planContinue")
+        tap("stripeButton")
+        assertText("confirmTitle", "You're in")
+        goHomeFromConfirmation()
+
+        openAccount()
+        let billDate = text("planDate").label
+        XCTAssertTrue(billDate.hasPrefix("Next bill "))
+        tap("outline_Manage plan")
+        tap("pagerDot_PLUS")
+        assertText("tierState_PLUS", "Upgrade")
+        tap("planContinue")
+        XCTAssertTrue(text("payLifecycleNote").label.hasPrefix("Starts now. You pay only for the days left until "))
+        snap("64-za-same-interval-upgrade-payment")
+        tap("stripeButton")
+        assertText("confirmTitle", "Plan updated")
+        assertText("confirm_Schedule", billDate)
+        snap("65-za-same-interval-upgrade-confirmation")
+        goHomeFromConfirmation()
+
+        openAccount()
+        assertText("activePlan", "DGO Plus · 3 months")
+        assertText("planDate", billDate)
     }
 
     func test09_ConfirmationAutoReturnsHome() {

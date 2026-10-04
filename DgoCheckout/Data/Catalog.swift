@@ -148,18 +148,9 @@ func billingCadenceLabel(_ duration: PlanDuration, _ region: PriceRegion) -> Str
     if region == .nepal { return "One-time payment" }
     switch duration {
     case .m12: return "Billed annually"
-    case .m03: return "Monthly · 3 months"
+    case .m03: return "Billed every 3 months"
     case .m01: return "Billed monthly"
     }
-}
-
-/// Stripe 3-month plans collect the discounted monthly rate today.
-func checkoutPriceForSku(_ sku: SubscriptionSku) -> Double {
-    if sku.region.stripe && sku.duration == .m03 {
-        let per = sku.price / Double(sku.duration.months)
-        return Double(roundToInt(per * 100)) / 100.0
-    }
-    return sku.price
 }
 
 struct Savings: Equatable {
@@ -181,7 +172,7 @@ func savingsVsMonthly(_ region: PriceRegion, _ tier: PlanTier, _ duration: PlanD
 
 func compareAtPrice(_ region: PriceRegion, _ tier: PlanTier, _ duration: PlanDuration) -> Double {
     let monthly = Catalog.findSku(region, tier, .m01)?.price ?? 0
-    return region.stripe && duration == .m03 ? monthly : monthly * Double(duration.months)
+    return monthly * Double(duration.months)
 }
 
 func applyCouponAmount(_ amount: Double, _ currency: Currency, _ coupon: AppliedCoupon?) -> Double {
