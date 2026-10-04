@@ -55,12 +55,9 @@ iOS has no system back button, so the Account screen has a "Back to home" link. 
 ## Tests
 
 ```sh
-TEST_RUNNER_SCREENSHOT_DIR=$PWD/screenshots/flows \
 xcodebuild -project DgoCheckout.xcodeproj -scheme DgoCheckout \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
 - `DgoCheckoutTests`: 26 unit tests covering pricing, coupons, plan-change rules, saved state and payment validation.
 - `DgoCheckoutUITests`: 9 end-to-end flows on the simulator: Nepal wallet and GetPay purchases, the decline card, Nepal plan changes, Stripe purchase with promo, Stripe downgrade / upgrade / cancel / resume, ZA and ZC prices, Account and sign out, and the confirmation countdown.
-
-Each UI step saves a screenshot to `screenshots/flows/`. `screenshots/sheets/` has the same images grouped six per page.
