@@ -152,3 +152,5 @@ struct CardForm: Equatable {
 }
 
 enum Screen { case home, account, checkout }
+
+enum CatalogTab { case plans, exclusive }

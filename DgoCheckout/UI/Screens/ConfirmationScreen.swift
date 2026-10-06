@@ -8,9 +8,13 @@ struct ConfirmationScreen: View {
     private static let autoHome = ProcessInfo.processInfo.arguments.contains("-uiTestNoAutoHome") ? Int.max : 10
 
     var body: some View {
-        let sku = vm.sku
+        let pass = vm.completedEvent
+        let sku = pass == nil ? vm.sku : nil
         let kind = vm.completedKind
-        let detail = sku.map { "\($0.tier.meta.name) · \($0.duration.label)" } ?? ""
+        let detail: String = {
+            if let pass { return "\(pass.title) · \(pass.subtitle)" }
+            return sku.map { "\($0.tier.meta.name) · \($0.duration.label)" } ?? ""
+        }()
 
         ZStack {
             Circle().fill(Color.brandPurple.opacity(0.18)).frame(width: 80, height: 80)
@@ -31,7 +35,7 @@ struct ConfirmationScreen: View {
                 }
                 .frame(width: 72, height: 72)
 
-                Text(title(kind)).font(.dgo(28, .black)).foregroundStyle(.white)
+                Text(pass != nil ? "Pass unlocked" : title(kind)).font(.dgo(28, .black)).foregroundStyle(.white)
                     .padding(.top, 20)
                     .accessibilityIdentifier("confirmTitle")
                 Text(detail).font(.dgo(14)).white(0.5)
@@ -45,6 +49,10 @@ struct ConfirmationScreen: View {
                     ConfirmRow(label: "Paid today", value: paidToday(kind, sku))
                     Divider1()
                     ConfirmRow(label: "Payment", value: vm.lastPaymentLabel)
+                    if let pass {
+                        Divider1()
+                        ConfirmRow(label: "Access", value: "Until \(formatRenewalDate(pass.accessUntil)) · no renewal")
+                    }
                     if let sku {
                         Divider1()
                         ConfirmRow(label: sku.region == .nepal ? "Access" : "Schedule", value: schedule(kind, sku))

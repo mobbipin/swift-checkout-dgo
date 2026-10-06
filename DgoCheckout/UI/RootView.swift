@@ -5,6 +5,11 @@ struct RootView: View {
 
     private var routeKey: String { "\(vm.screen)-\(vm.step)" }
 
+    /// Rebuilds the plan and payment screens when the dev toggle or a purchase changes what they show.
+    private var checkoutKey: String {
+        "\(vm.region)-\(String(describing: vm.session))-\(vm.manageMode)-\(vm.ownedPasses.sorted())-\(vm.catalogTab)"
+    }
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             Color.black.ignoresSafeArea()
@@ -31,8 +36,10 @@ struct RootView: View {
             DevGeoToggle(
                 region: vm.region,
                 subscribed: vm.session != nil,
+                exclusive: vm.exclusiveEnabled,
                 onRegion: vm.setDevRegion,
-                onSubscribed: vm.setSubscribed
+                onSubscribed: vm.setSubscribed,
+                onExclusive: vm.setExclusive
             )
             .padding(.bottom, devToggleBottom)
         }
@@ -43,8 +50,8 @@ struct RootView: View {
         switch (vm.screen, vm.step) {
         case (.home, _): LandingScreen(vm: vm)
         case (.account, _): AccountScreen(vm: vm)
-        case (.checkout, 0): ChoosePlanScreen(vm: vm)
-        case (.checkout, 1): PaymentScreen(vm: vm)
+        case (.checkout, 0): ChoosePlanScreen(vm: vm).id(checkoutKey)
+        case (.checkout, 1): PaymentScreen(vm: vm).id(checkoutKey)
         default: ConfirmationScreen(vm: vm)
         }
     }
@@ -63,7 +70,7 @@ private struct CheckoutHeader: View {
 
     private var title: String {
         switch vm.step {
-        case 0: vm.manageMode ? "Change plan" : "Choose a plan"
+        case 0: vm.buyingEvent ? "Exclusive" : vm.manageMode ? "Change plan" : "Choose a plan"
         case 1: "Payment"
         default: "Confirmed"
         }

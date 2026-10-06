@@ -76,12 +76,24 @@ struct AccountScreen: View {
                     .accessibilityIdentifier("myPlansToggle")
 
                     if vm.plansOpen {
+                        let passes = Events.all.filter { vm.ownedPasses.contains($0.key) }
                         Divider1()
-                        if session == nil {
+                        if session == nil && passes.isEmpty {
                             Text("No active plans on this account").font(.dgo(12)).white(0.4)
                                 .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-                        } else {
-                            PlanDetails(vm: vm)
+                        }
+                        if session != nil { PlanDetails(vm: vm) }
+                        ForEach(passes, id: \.key) { PassRow(pass: $0) }
+                        if vm.exclusiveEnabled {
+                            Button { vm.openCheckout(exclusive: true) } label: {
+                                Text("Browse exclusive events")
+                                    .font(.dgo(12, .black)).foregroundStyle(Color.brandPurple)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 16).padding(.vertical, 14)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("browseExclusive")
                         }
                     }
                     MenuRow(icon: "airplayvideo", label: "TV pairing code") { vm.accountNotice = "TV pairing is in the full app." }
@@ -135,13 +147,37 @@ struct AccountScreen: View {
     }
 }
 
+private struct PassRow: View {
+    let pass: EventPass
+
+    var body: some View {
+        let accent = Color(argb: pass.accent)
+        HStack(spacing: 10) {
+            Image(systemName: "trophy.fill").font(.system(size: 16)).foregroundStyle(accent)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("\(pass.title) · \(pass.subtitle)").font(.dgo(14, .black)).foregroundStyle(.white)
+                    .accessibilityIdentifier("pass_\(pass.key)")
+                Text("One-time pass · Access until \(formatRenewalDate(pass.accessUntil))").font(.dgo(11)).white(0.45)
+            }
+            Spacer()
+            Text("PASS").font(.dgo(9, .black)).foregroundStyle(accent)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(accent.opacity(0.14), in: Capsule())
+        }
+        .padding(12)
+        .card(12, fill: Color.white.opacity(0.03), stroke: .white.opacity(0.08))
+        .padding(.horizontal, 12)
+        .padding(.top, 12)
+    }
+}
+
 private struct PlanDetails: View {
     @Bindable var vm: CheckoutViewModel
 
     var body: some View {
         if let session = vm.session {
             let sku = Catalog.findSku(session.region, session.tier, session.duration)
-            let ending = session.status == .canceling
+            let ending = session.billingMode == .recurring && session.status == .canceling
             VStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(alignment: .top) {
@@ -167,7 +203,7 @@ private struct PlanDetails: View {
                             .accessibilityIdentifier("planDate")
                     }
                     .padding(.top, 10)
-                    if let pending = session.pendingPlan {
+                    if session.billingMode == .recurring, let pending = session.pendingPlan {
                         Text("Changes to \(pending.tier.meta.name) · \(pending.duration.label) on \(formatRenewalDate(pending.effectiveDate))")
                             .font(.dgo(11)).white(0.55)
                             .frame(maxWidth: .infinity, alignment: .leading)

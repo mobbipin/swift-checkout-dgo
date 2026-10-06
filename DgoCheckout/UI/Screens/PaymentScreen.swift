@@ -4,7 +4,11 @@ struct PaymentScreen: View {
     @Bindable var vm: CheckoutViewModel
 
     var body: some View {
-        let title = vm.sku.map { "\($0.tier.meta.name) · \($0.duration.label)" } ?? "DGO plan"
+        let title: String = {
+            if vm.buyingEvent, let event = vm.event { return "\(event.title) · \(event.subtitle)" }
+            if let sku = vm.sku { return "\(sku.tier.meta.name) · \(sku.duration.label)" }
+            return "DGO plan"
+        }()
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if vm.region.stripe {
@@ -39,7 +43,7 @@ private struct NepalCheckout: View {
     let title: String
 
     var body: some View {
-        let currency = vm.sku?.currency ?? vm.region.currency
+        let currency = vm.region.currency
         let price = formatMoney(vm.dueAmount, currency)
         let list = formatMoney(vm.amount, currency)
 
@@ -54,7 +58,7 @@ private struct NepalCheckout: View {
             }
             Text(title).font(.dgo(14, .bold)).white(0.8)
                 .accessibilityIdentifier("payTitle")
-            Text("Local wallets" + (vm.sku.map { " · \(billingCadenceLabel($0.duration, $0.region))" } ?? ""))
+            Text("Local wallets · " + cadenceLabel(vm))
                 .font(.dgo(12)).white(0.4)
 
             CouponField(coupon: vm.coupon, onApply: vm.applyCoupon, onClear: vm.clearCoupon)
@@ -121,26 +125,6 @@ private struct NepalMethodRow: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("psp_\(method.rawValue)")
 
-            if open && method != .getpay {
-                VStack(alignment: .leading, spacing: 8) {
-                    GhostField(
-                        text: $vm.mobileNumber,
-                        placeholder: method == .connectips ? "Account / Customer ID" : "98XXXXXXXX",
-                        keyboard: method == .connectips ? .default : .numberPad,
-                        identifier: "walletInput",
-                        transform: { raw in
-                            method == .connectips
-                                ? String(raw.filter { $0.isLetter || $0.isNumber || "/_-".contains($0) }.prefix(24))
-                                : String(raw.filter(\.isNumber).prefix(14))
-                        }
-                    )
-                    .onChange(of: vm.mobileNumber) { vm.paymentError = nil }
-                    Text("Continues in \(method.title)").font(.dgo(11)).white(0.4)
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
-                .padding(.top, 4)
-            }
             if open && method == .getpay {
                 CardFields(vm: vm)
             }
@@ -223,8 +207,7 @@ private struct StripeHostedCheckout: View {
     let title: String
 
     var body: some View {
-        let sku = vm.sku
-        let currency = sku?.currency ?? vm.region.currency
+        let currency = vm.region.currency
         let due = dueTodayCaption(vm.planChange, vm.dueAmount, currency)
         let kind = vm.planChange?.kind
         let newSubscription = kind == nil || kind == .new
@@ -236,11 +219,11 @@ private struct StripeHostedCheckout: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).font(.dgo(15, .bold)).foregroundStyle(.white)
                         .accessibilityIdentifier("payTitle")
-                    Text(sku.map { billingCadenceLabel($0.duration, $0.region) } ?? "")
+                    Text(cadenceLabel(vm))
                         .font(.dgo(12)).white(0.45)
                 }
                 Spacer()
-                if sku != nil && newSubscription {
+                if newSubscription {
                     Text(formatMoney(vm.amount, currency)).font(.dgo(14, .bold)).white(0.7)
                 }
             }
@@ -300,6 +283,11 @@ private struct StripeHostedCheckout: View {
         Text("Prototype · no live charge").font(.dgo(10)).white(0.3)
             .frame(maxWidth: .infinity).padding(.top, 10)
     }
+}
+
+private func cadenceLabel(_ vm: CheckoutViewModel) -> String {
+    if vm.buyingEvent, let event = vm.event { return "One-time pass · until \(formatRenewalDate(event.accessUntil))" }
+    return vm.sku.map { billingCadenceLabel($0.duration, $0.region) } ?? ""
 }
 
 private struct StripePanel: View {

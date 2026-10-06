@@ -16,40 +16,14 @@ struct ChoosePlanScreen: View {
                     .capsuleCard(fill: Color.white.opacity(0.04), stroke: .white.opacity(0.1))
                     .accessibilityIdentifier("billedIn")
 
-                Text(headline)
-                    .font(.dgo(34, .black)).tracking(-0.7).foregroundStyle(.white)
-                    .padding(.top, 14)
-                    .accessibilityIdentifier("planHeadline")
-
-                Group {
-                    if vm.manageMode, let session = vm.session {
-                        Text("Current: \(session.tier.meta.name) · \(session.duration.label)")
-                    } else {
-                        Text("Mobile for phones. Plus adds TV.")
-                    }
+                if vm.exclusiveEnabled {
+                    CatalogTabs(selected: vm.catalogTab) { vm.catalogTab = $0 }
+                        .padding(.top, 14)
                 }
-                .font(.dgo(14)).white(0.5).padding(.top, 8)
-
-                DurationTabs(region: vm.region, tier: vm.tier, selected: vm.duration) { vm.duration = $0 }
-                    .padding(.top, 22)
-
-                PlanPager(vm: vm).padding(.top, 18)
-
-                if vm.manageMode, vm.session?.status == .canceling {
-                    Text("Renewal is off. A new plan turns it back on.")
-                        .font(.dgo(12)).foregroundStyle(Color.amber)
-                        .padding(.top, 12)
-                }
-                if vm.manageMode, let session = vm.session {
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "info.circle").font(.system(size: 15)).foregroundStyle(Color.brandPurple)
-                        Text(lifecycleNote(session, change)).font(.dgo(12)).white(0.5).lineSpacing(4)
-                            .accessibilityIdentifier("lifecycleNote")
-                        Spacer(minLength: 0)
-                    }
-                    .padding(14)
-                    .card(16, fill: Color.white.opacity(0.04), stroke: .white.opacity(0.1))
-                    .padding(.top, 12)
+                if vm.buyingEvent {
+                    ExclusiveCatalog(vm: vm)
+                } else {
+                    plans(change)
                 }
             }
             .padding(.horizontal, 20)
@@ -58,28 +32,75 @@ struct ChoosePlanScreen: View {
         }
         .scrollIndicators(.hidden)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(selected.map { $0.tier.meta.name } ?? "Choose a plan")
-                        .font(.dgo(12, .bold)).foregroundStyle(.white).lineLimit(1)
-                        .accessibilityIdentifier("summaryName")
-                    Text(summaryLine(selected, change))
-                        .font(.dgo(11)).white(0.4)
-                        .accessibilityIdentifier("summaryPrice")
-                }
-                Spacer()
-                BrandButton(
-                    label: planActionLabel(change, currentPlan: selectedCurrent),
-                    enabled: vm.canAdvanceFromPlan,
-                    identifier: "planContinue",
-                    action: vm.nextFromPlan
-                )
+            if vm.buyingEvent {
+                EventBottomBar(vm: vm)
+            } else {
+                planBottomBar(selected, change, selectedCurrent: selectedCurrent)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.black.opacity(0.9).ignoresSafeArea(edges: .bottom))
-            .overlay(alignment: .top) { Divider1(opacity: 0.1) }
         }
+    }
+
+    @ViewBuilder
+    private func plans(_ change: PlanChange?) -> some View {
+        Text(headline)
+            .font(.dgo(34, .black)).tracking(-0.7).foregroundStyle(.white)
+            .padding(.top, 14)
+            .accessibilityIdentifier("planHeadline")
+
+        Group {
+            if vm.manageMode, let session = vm.session {
+                Text("Current: \(session.tier.meta.name) · \(session.duration.label)")
+            } else {
+                Text("Mobile for phones. Plus adds TV.")
+            }
+        }
+        .font(.dgo(14)).white(0.5).padding(.top, 8)
+
+        DurationTabs(region: vm.region, tier: vm.tier, selected: vm.duration) { vm.duration = $0 }
+            .padding(.top, 22)
+
+        PlanPager(vm: vm).padding(.top, 18)
+
+        if vm.manageMode, vm.session?.billingMode == .recurring, vm.session?.status == .canceling {
+            Text("Renewal is off. A new plan turns it back on.")
+                .font(.dgo(12)).foregroundStyle(Color.amber)
+                .padding(.top, 12)
+        }
+        if vm.manageMode, let session = vm.session {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle").font(.system(size: 15)).foregroundStyle(Color.brandPurple)
+                Text(lifecycleNote(session, change)).font(.dgo(12)).white(0.5).lineSpacing(4)
+                    .accessibilityIdentifier("lifecycleNote")
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .card(16, fill: Color.white.opacity(0.04), stroke: .white.opacity(0.1))
+            .padding(.top, 12)
+        }
+    }
+
+    private func planBottomBar(_ selected: SubscriptionSku?, _ change: PlanChange?, selectedCurrent: Bool) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(selected.map { $0.tier.meta.name } ?? "Choose a plan")
+                    .font(.dgo(12, .bold)).foregroundStyle(.white).lineLimit(1)
+                    .accessibilityIdentifier("summaryName")
+                Text(summaryLine(selected, change))
+                    .font(.dgo(11)).white(0.4)
+                    .accessibilityIdentifier("summaryPrice")
+            }
+            Spacer()
+            BrandButton(
+                label: planActionLabel(change, currentPlan: selectedCurrent),
+                enabled: vm.canAdvanceFromPlan,
+                identifier: "planContinue",
+                action: vm.nextFromPlan
+            )
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.black.opacity(0.9).ignoresSafeArea(edges: .bottom))
+        .overlay(alignment: .top) { Divider1(opacity: 0.1) }
     }
 
     private var headline: String {

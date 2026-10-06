@@ -18,6 +18,8 @@
 		8CB5F14FDAD512E98A141088 /* ConfirmationScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5482BC6767A3EE8DD350D37 /* ConfirmationScreen.swift */; };
 		93F63D9BC4C13FE9F77416B6 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F31F5EF1F014EDBEC3AB305 /* RootView.swift */; };
 		9C6FFAD14613E8DC59D1181A /* CheckoutLogicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1A5AA28CA9EC9D2CE04DD2 /* CheckoutLogicTests.swift */; };
+		A9D663F8259E75086FBE8B9A /* Events.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15EFF7BCB26B02822CACF4B /* Events.swift */; };
+		B3C9AEFFB1C6D49DA96ABF46 /* ExclusiveCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CF4CA4985DCA9B9E16B1505 /* ExclusiveCatalog.swift */; };
 		BA324D3A5C1A619CF4D64ACE /* ChoosePlanScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53F4718FAEC4B4309F146E3 /* ChoosePlanScreen.swift */; };
 		BB1693B6166020078B218556 /* CheckoutViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A378E0E84E0FE506F5CC755F /* CheckoutViewModel.swift */; };
 		BF46677A0AFE09F3AA1492B4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2E360421CC7760BA01C3094 /* Assets.xcassets */; };
@@ -51,9 +53,11 @@
 		1B260E7691CDC760A2D74FB5 /* DgoCheckoutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DgoCheckoutApp.swift; sourceTree = "<group>"; };
 		25E0059E23F193B87972DE76 /* AccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountScreen.swift; sourceTree = "<group>"; };
 		36BE5CA0F33AEB07A273EA07 /* PaymentScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentScreen.swift; sourceTree = "<group>"; };
+		6CF4CA4985DCA9B9E16B1505 /* ExclusiveCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExclusiveCatalog.swift; sourceTree = "<group>"; };
 		6F31F5EF1F014EDBEC3AB305 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		80CEFD1ADF3117643EF43E2D /* Landing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Landing.swift; sourceTree = "<group>"; };
 		9563964002BB16493F15042A /* Catalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Catalog.swift; sourceTree = "<group>"; };
+		A15EFF7BCB26B02822CACF4B /* Events.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Events.swift; sourceTree = "<group>"; };
 		A378E0E84E0FE506F5CC755F /* CheckoutViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckoutViewModel.swift; sourceTree = "<group>"; };
 		A3C24FBC20CE6B88981C864A /* SessionRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRepository.swift; sourceTree = "<group>"; };
 		A7EFAC5E5F0390C8C59EF383 /* DgoCheckoutUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DgoCheckoutUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -96,6 +100,7 @@
 				25E0059E23F193B87972DE76 /* AccountScreen.swift */,
 				C53F4718FAEC4B4309F146E3 /* ChoosePlanScreen.swift */,
 				C5482BC6767A3EE8DD350D37 /* ConfirmationScreen.swift */,
+				6CF4CA4985DCA9B9E16B1505 /* ExclusiveCatalog.swift */,
 				088681A68C480DE3EB29836D /* LandingScreen.swift */,
 				36BE5CA0F33AEB07A273EA07 /* PaymentScreen.swift */,
 			);
@@ -124,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				9563964002BB16493F15042A /* Catalog.swift */,
+				A15EFF7BCB26B02822CACF4B /* Events.swift */,
 				80CEFD1ADF3117643EF43E2D /* Landing.swift */,
 				DFF423B418C06C247D432AC2 /* Models.swift */,
 				D26F50E540462626273EFA27 /* PlanChanges.swift */,
@@ -321,6 +327,8 @@
 				8CB5F14FDAD512E98A141088 /* ConfirmationScreen.swift in Sources */,
 				1EBEC00D9BC3196131FD5662 /* DevGeoToggle.swift in Sources */,
 				EB9E4DE129FFBA4F4EC036FE /* DgoCheckoutApp.swift in Sources */,
+				A9D663F8259E75086FBE8B9A /* Events.swift in Sources */,
+				B3C9AEFFB1C6D49DA96ABF46 /* ExclusiveCatalog.swift in Sources */,
 				79E8DCE1829480D539BDD917 /* Landing.swift in Sources */,
 				CDEFEEC10E6063309D616610 /* LandingScreen.swift in Sources */,
 				DE93542DCE2E173C3894C5A2 /* Models.swift in Sources */,

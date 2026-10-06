@@ -91,6 +91,26 @@ final class SessionRepository {
         setSession(next)
     }
 
+    func getPasses() -> Set<String> {
+        Set(defaults.stringArray(forKey: Self.keyPasses) ?? [])
+    }
+
+    func addPass(_ key: String) {
+        defaults.set(Array(getPasses().union([key])).sorted(), forKey: Self.keyPasses)
+    }
+
+    func clearPasses() {
+        defaults.removeObject(forKey: Self.keyPasses)
+    }
+
+    func getExclusiveEnabled() -> Bool {
+        defaults.object(forKey: Self.keyExclusive) as? Bool ?? true
+    }
+
+    func setExclusiveEnabled(_ on: Bool) {
+        defaults.set(on, forKey: Self.keyExclusive)
+    }
+
     func generateOrderRef() -> String {
         let hex = String((0..<8).map { _ in "0123456789ABCDEF".randomElement()! })
         return "DGO-\(hex.prefix(4))-\(hex.suffix(4))"
@@ -98,6 +118,8 @@ final class SessionRepository {
 
     static let keyRegion = "dgo_dev_region"
     static let keySession = "dgo_unlock_subscription"
+    static let keyPasses = "dgo_event_passes"
+    static let keyExclusive = "dgo_dev_exclusive"
 
     private static var utcCalendar: Calendar {
         var cal = Calendar(identifier: .gregorian)

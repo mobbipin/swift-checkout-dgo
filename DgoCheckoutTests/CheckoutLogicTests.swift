@@ -237,12 +237,6 @@ final class ViewModelTests: XCTestCase {
         vm.nextFromPlan()
         XCTAssertFalse(vm.submitNepalPayment())
         XCTAssertEqual(vm.paymentError, "Choose a payment method.")
-        vm.nepalPsp = .khalti
-        XCTAssertFalse(vm.submitNepalPayment())
-        XCTAssertEqual(vm.paymentError, "Enter a valid mobile number.")
-        vm.nepalPsp = .connectips
-        XCTAssertFalse(vm.submitNepalPayment())
-        XCTAssertEqual(vm.paymentError, "Enter a valid account or customer ID.")
         vm.nepalPsp = .getpay
         vm.cardForm = CardForm(number: vm.formatCard("4000000000000002"), name: "A", expiry: vm.formatExpiry("1230"), cvc: "123")
         XCTAssertFalse(vm.submitNepalPayment())
@@ -251,6 +245,76 @@ final class ViewModelTests: XCTestCase {
         XCTAssertTrue(vm.submitNepalPayment())
         XCTAssertEqual(vm.step, 2)
         XCTAssertEqual(vm.session?.skuId, "DGO-NP-PLS-03M")
+    }
+
+    func testNepalWalletNeedsNoPhoneNumber() {
+        let vm = makeVM()
+        vm.openCheckout()
+        vm.nextFromPlan()
+        vm.nepalPsp = .khalti
+        XCTAssertTrue(vm.submitNepalPayment())
+        XCTAssertEqual(vm.lastPaymentLabel, "Khalti by IME")
+        XCTAssertEqual(vm.step, 2)
+    }
+
+    func testEventPassPurchaseWithoutSubscription() {
+        let vm = makeVM()
+        vm.openCheckout(exclusive: true)
+        XCTAssertTrue(vm.buyingEvent)
+        XCTAssertEqual(vm.amount, 999)
+        XCTAssertTrue(vm.canAdvanceFromPlan)
+        vm.nextFromPlan()
+        vm.nepalPsp = .esewa
+        XCTAssertTrue(vm.submitNepalPayment())
+        XCTAssertEqual(vm.completedEvent?.key, "EURO28-ALL")
+        XCTAssertNil(vm.session)
+        XCTAssertEqual(vm.ownedPasses, ["EURO28-ALL"])
+
+        // The full pass covers the knockout pass, and an owned pass can't be bought twice.
+        vm.openCheckout(exclusive: true)
+        XCTAssertFalse(vm.canAdvanceFromPlan)
+        vm.eventKey = "EURO28-KO"
+        XCTAssertEqual(passOwnership(vm.event!, vm.ownedPasses), .included)
+        XCTAssertFalse(vm.canAdvanceFromPlan)
+    }
+
+    func testEventPassStripePriceAndSignOutClearsPasses() {
+        let vm = makeVM()
+        vm.setDevRegion(.zoneB)
+        vm.openCheckout(exclusive: true)
+        vm.eventKey = "EURO28-KO"
+        XCTAssertEqual(vm.amount, 14.99, accuracy: 0.001)
+        vm.nextFromPlan()
+        vm.submitStripePayment()
+        XCTAssertEqual(vm.ownedPasses, ["EURO28-KO"])
+        vm.setSubscribed(false)
+        XCTAssertTrue(vm.ownedPasses.isEmpty)
+    }
+
+    func testExclusiveToggleOffFallsBackToPlans() {
+        let vm = makeVM()
+        vm.openCheckout(exclusive: true)
+        XCTAssertTrue(vm.buyingEvent)
+        vm.setExclusive(false)
+        XCTAssertFalse(vm.buyingEvent)
+        XCTAssertEqual(vm.catalogTab, .plans)
+        vm.openCheckout(exclusive: true)
+        XCTAssertFalse(vm.buyingEvent)
+    }
+
+    func testRegionToggleKeepsCancelAndPendingPlan() {
+        let vm = makeVM()
+        vm.setDevRegion(.zoneB)
+        vm.setSubscribed(true)
+        vm.openCheckout(manage: true)
+        vm.tier = .mobile
+        vm.nextFromPlan()
+        vm.submitStripePayment()
+        XCTAssertEqual(vm.session?.pendingPlan?.skuId, "DGO-ZB-MOB-03M")
+        vm.setDevRegion(.zoneA)
+        XCTAssertEqual(vm.session?.skuId, "DGO-ZA-PLS-03M")
+        XCTAssertEqual(vm.session?.pendingPlan?.skuId, "DGO-ZA-MOB-03M")
+        XCTAssertEqual(vm.session?.billingMode, .recurring)
     }
 
     func testFormatters() {

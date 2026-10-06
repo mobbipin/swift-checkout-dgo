@@ -4,8 +4,10 @@ import SwiftUI
 struct DevGeoToggle: View {
     let region: PriceRegion
     let subscribed: Bool
+    let exclusive: Bool
     let onRegion: (PriceRegion) -> Void
     let onSubscribed: (Bool) -> Void
+    let onExclusive: (Bool) -> Void
 
     @State private var expanded = false
     @State private var touches = 0
@@ -34,6 +36,9 @@ struct DevGeoToggle: View {
                 if !expanded {
                     Text(region.toggleLabel).font(.dgo(9, .bold, mono: true)).foregroundStyle(Color.devLime.opacity(0.9))
                     Text(subscribed ? "SUB" : "OFF").font(.dgo(8, mono: true)).foregroundStyle(Color.devLime.opacity(0.6))
+                    if exclusive {
+                        Text("PPV").font(.dgo(8, mono: true)).foregroundStyle(Color.devLime.opacity(0.6))
+                    }
                 }
             }
             .padding(.horizontal, 6)
@@ -62,6 +67,8 @@ struct DevGeoToggle: View {
                 Rectangle().fill(Color.devLime.opacity(0.25)).frame(width: 1, height: 12)
                 chip("OFF", selected: !subscribed) { touches += 1; onSubscribed(false) }
                 chip("SUB", selected: subscribed) { touches += 1; onSubscribed(true) }
+                Rectangle().fill(Color.devLime.opacity(0.25)).frame(width: 1, height: 12)
+                chip("PPV", selected: exclusive) { touches += 1; onExclusive(!exclusive) }
             }
         }
         .padding(.horizontal, 8)

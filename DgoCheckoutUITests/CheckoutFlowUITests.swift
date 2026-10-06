@@ -160,13 +160,11 @@ final class CheckoutFlowUITests: XCTestCase {
         dismissKeyboard()
         snap("14-np-coupon-applied")
 
+        // Wallets hand off to the provider app; no phone number is collected here.
         tap("psp_khalti")
-        tap("payButton")
-        assertText("paymentError", "Enter a valid mobile number.")
-        snap("15-np-khalti-validation")
-        type("walletInput", "9800000000")
-        dismissKeyboard()
-        snap("16-np-khalti-filled")
+        XCTAssertFalse(app.textFields["walletInput"].exists)
+        XCTAssertTrue(button("payButton").isEnabled)
+        snap("15-np-khalti-selected")
         tap("payButton")
 
         assertText("confirmTitle", "You're in")
@@ -214,8 +212,6 @@ final class CheckoutFlowUITests: XCTestCase {
         tap("pagerDot_MOBILE")
         tap("planContinue")
         tap("psp_esewa")
-        type("walletInput", "9811111111")
-        dismissKeyboard()
         tap("payButton")
         assertText("confirmTitle", "You're in")
         goHomeFromConfirmation()
@@ -251,8 +247,6 @@ final class CheckoutFlowUITests: XCTestCase {
         tap("planContinue")
         assertText("dueToday", "रू 250")
         tap("psp_fonepay")
-        type("walletInput", "9822222222")
-        dismissKeyboard()
         tap("payButton")
         assertText("confirmTitle", "Plan updated")
         assertText("confirm_Access", "Access date unchanged")
@@ -266,8 +260,6 @@ final class CheckoutFlowUITests: XCTestCase {
         XCTAssertEqual(button("planContinue").label, "Add time")
         tap("planContinue")
         tap("psp_connectips")
-        type("walletInput", "ACC-001")
-        dismissKeyboard()
         tap("payButton")
         assertText("confirmTitle", "Time added")
         assertText("confirm_Access", "12 months added after this term")
@@ -462,6 +454,91 @@ final class CheckoutFlowUITests: XCTestCase {
         openAccount()
         assertText("activePlan", "DGO Plus · 3 months")
         assertText("planDate", billDate)
+    }
+
+    // MARK: Exclusive (one-time event passes)
+
+    func test11_NepalEventPassWithoutPlan() {
+        openPlansFromHome()
+        tap("catalogTab_Exclusive")
+        assertText("headerTitle", "Exclusive")
+        assertText("eventPrice_EURO28-ALL", "रू 999")
+        assertText("summaryPrice", "Full tournament pass · रू 999")
+        XCTAssertEqual(button("planContinue").label, "Buy pass")
+        snap("100-np-exclusive-full-pass")
+
+        tap("eventDot_EURO28-KO")
+        assertText("summaryPrice", "Knockout stage pass · रू 499")
+        snap("101-np-exclusive-knockout-pass")
+
+        tap("eventDot_EURO28-ALL")
+        assertText("summaryPrice", "Full tournament pass · रू 999")
+        tap("planContinue")
+        assertText("headerTitle", "Payment")
+        assertText("payTitle", "EURO 2028 · Full tournament pass")
+        tap("psp_khalti")
+        snap("102-np-exclusive-payment")
+        tap("payButton")
+
+        assertText("confirmTitle", "Pass unlocked")
+        assertText("confirmDetail", "EURO 2028 · Full tournament pass")
+        assertText("confirm_Paid today", "रू 999")
+        XCTAssertTrue(text("confirm_Access").label.hasSuffix("· no renewal"))
+        snap("103-np-exclusive-confirmation")
+        goHomeFromConfirmation()
+
+        openAccount()
+        assertText("accountBadge", "GUEST")
+        assertText("pass_EURO28-ALL", "EURO 2028 · Full tournament pass")
+        XCTAssertFalse(app.staticTexts["No active plans on this account"].exists)
+        snap("104-np-account-pass")
+
+        tap("browseExclusive")
+        assertText("headerTitle", "Exclusive")
+        XCTAssertEqual(button("planContinue").label, "Owned")
+        XCTAssertFalse(button("planContinue").isEnabled)
+        snap("105-np-exclusive-owned")
+        tap("eventDot_EURO28-KO")
+        XCTAssertEqual(button("planContinue").label, "Included")
+        XCTAssertFalse(button("planContinue").isEnabled)
+        snap("106-np-exclusive-included")
+    }
+
+    func test12_StripeEventPassAlongsidePlan() {
+        dev("ZB")
+        dev("SUB")
+        openAccount()
+        tap("browseExclusive")
+        assertText("eventPrice_EURO28-ALL", "$24.99")
+        tap("eventDot_EURO28-KO")
+        assertText("summaryPrice", "Knockout stage pass · $14.99")
+        snap("110-zb-exclusive-catalog")
+        tap("planContinue")
+        assertText("dueToday", "$14.99")
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "One-time pass · until")).firstMatch.exists)
+        snap("111-zb-exclusive-stripe-payment")
+        tap("stripeButton")
+        assertText("confirmTitle", "Pass unlocked")
+        assertText("confirm_Payment", "Stripe Checkout")
+        snap("112-zb-exclusive-confirmation")
+        goHomeFromConfirmation()
+
+        openAccount()
+        assertText("activePlan", "DGO Plus · 3 months")
+        assertText("pass_EURO28-KO", "EURO 2028 · Knockout stage pass")
+        snap("113-zb-account-plan-and-pass")
+    }
+
+    func test13_DevToggleTurnsExclusiveOff() {
+        tap("devHandle")
+        snap("120-dev-toggle-ppv")
+        tap("dev_PPV")
+        openPlansFromHome()
+        XCTAssertFalse(button("catalogTab_Exclusive").exists)
+        snap("121-ppv-off-plans-only")
+        tap("headerBack")
+        openAccount()
+        XCTAssertFalse(button("browseExclusive").exists)
     }
 
     func test09_ConfirmationAutoReturnsHome() {

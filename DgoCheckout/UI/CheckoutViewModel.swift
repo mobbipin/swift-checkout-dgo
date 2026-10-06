@@ -24,48 +24,65 @@ final class CheckoutViewModel {
     private(set) var manageMode = false
 
     var nepalPsp: NepalPsp?
-    var mobileNumber = ""
     var cardForm = CardForm()
     var paymentError: String?
     var coupon: AppliedCoupon?
     private(set) var orderRef: String
     private(set) var lastPaymentLabel = "Payment method"
     private(set) var completedKind: PlanChangeKind = .new
+    private(set) var completedEvent: EventPass?
+
+    private(set) var exclusiveEnabled: Bool
+    var catalogTab: CatalogTab = .plans
+    var eventKey = Events.all[0].key
+    private(set) var ownedPasses: Set<String>
 
     init(repo: SessionRepository = SessionRepository()) {
         self.repo = repo
         region = repo.getRegion()
         session = repo.getSession()
         orderRef = repo.generateOrderRef()
+        exclusiveEnabled = repo.getExclusiveEnabled()
+        ownedPasses = repo.getPasses()
     }
+
+    var buyingEvent: Bool { exclusiveEnabled && catalogTab == .exclusive }
+
+    var event: EventPass? { Events.find(eventKey) }
 
     var sku: SubscriptionSku? { Catalog.findSku(region, tier, duration) }
 
-    var planChange: PlanChange? { resolvePlanChange(session, sku, manageMode: manageMode) }
+    var planChange: PlanChange? {
+        if buyingEvent {
+            return event.map { PlanChange(kind: .new, amount: $0.price(region), allowed: passOwnership($0, ownedPasses) == nil) }
+        }
+        return resolvePlanChange(session, sku, manageMode: manageMode)
+    }
 
     var amount: Double {
+        if buyingEvent { return event?.price(region) ?? 0 }
         guard let selected = sku else { return 0 }
         return planChange?.amount ?? selected.price
     }
 
-    var dueAmount: Double { applyCouponAmount(amount, sku?.currency ?? region.currency, coupon) }
+    var dueAmount: Double { applyCouponAmount(amount, region.currency, coupon) }
 
-    var canAdvanceFromPlan: Bool { sku != nil && (planChange?.allowed ?? true) }
+    var canAdvanceFromPlan: Bool {
+        buyingEvent ? planChange?.allowed == true : sku != nil && (planChange?.allowed ?? true)
+    }
+
+    func setExclusive(_ on: Bool) {
+        exclusiveEnabled = on
+        repo.setExclusiveEnabled(on)
+        if !on { catalogTab = .plans }
+    }
 
     func setDevRegion(_ next: PriceRegion) {
+        guard next != region else { return }
         region = next
         repo.setRegion(next)
-        if let current = repo.getSession(),
-           let seededSku = Catalog.findSku(next, current.tier, current.duration) {
-            let seeded = repo.sessionFromSku(seededSku)
-            repo.setSession(seeded)
-            session = seeded
-            tier = seeded.tier
-            duration = seeded.duration
-        }
-        nepalPsp = nil
-        paymentError = nil
-        coupon = nil
+        remapSession(next)
+        onDevToggle()
     }
 
     func setSubscribed(_ on: Bool) {
@@ -76,15 +93,51 @@ final class CheckoutViewModel {
                 let next = repo.sessionFromSku(seeded)
                 repo.setSession(next)
                 session = next
+                if screen == .checkout {
+                    tier = next.tier
+                    duration = next.duration
+                }
             }
         } else {
             repo.setSession(nil)
+            repo.clearPasses()
             session = nil
+            ownedPasses = []
             manageMode = false
         }
+        onDevToggle()
     }
 
-    func openCheckout(manage: Bool = false) {
+    /// Keep tier, term, cancel, and pending plan; only the region-specific sku changes.
+    private func remapSession(_ next: PriceRegion) {
+        guard var seeded = repo.getSession(),
+              let mapped = Catalog.findSku(next, seeded.tier, seeded.duration) else { return }
+        if var pending = seeded.pendingPlan {
+            pending.skuId = Catalog.findSku(next, pending.tier, pending.duration)?.id ?? pending.skuId
+            seeded.pendingPlan = pending
+        }
+        seeded.skuId = mapped.id
+        seeded.region = mapped.region
+        seeded.liveSports = mapped.liveSports
+        seeded.entitlement = mapped.entitlement
+        seeded.billingMode = next.stripe ? .recurring : .prepaid
+        if next.stripe { seeded.nextBillingDate = seeded.nextBillingDate ?? seeded.paidThrough }
+        repo.setSession(seeded)
+        session = seeded
+    }
+
+    private func onDevToggle() {
+        nepalPsp = nil
+        paymentError = nil
+        coupon = nil
+        cardForm = CardForm()
+        guard screen == .checkout else { return }
+        manageMode = session != nil
+        if step == 1 && !canAdvanceFromPlan { step = 0 }
+    }
+
+    func openCheckout(manage: Bool = false, exclusive: Bool = false) {
+        catalogTab = exclusive && exclusiveEnabled ? .exclusive : .plans
         manageMode = manage && session != nil
         if manageMode, let session {
             region = session.region
@@ -198,11 +251,6 @@ final class CheckoutViewModel {
                 paymentError = "Card declined. Try another."
                 return false
             }
-        } else if mobileNumber.trimmingCharacters(in: .whitespaces).count < 5 {
-            paymentError = method == .connectips
-                ? "Enter a valid account or customer ID."
-                : "Enter a valid mobile number."
-            return false
         }
         lastPaymentLabel = method.title
         completePurchase()
@@ -222,6 +270,16 @@ final class CheckoutViewModel {
     }
 
     private func completePurchase() {
+        if buyingEvent {
+            guard let pass = event else { return }
+            repo.addPass(pass.key)
+            ownedPasses = repo.getPasses()
+            completedEvent = pass
+            completedKind = .new
+            step = 2
+            return
+        }
+        completedEvent = nil
         guard let selected = sku else { return }
         let kind = planChange?.kind ?? .new
         completedKind = kind

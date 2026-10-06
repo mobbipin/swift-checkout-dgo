@@ -42,7 +42,7 @@ The checkout is a prototype: no live Stripe or Nepal wallet charge. Test decline
 
 | Kotlin | Swift |
 | --- | --- |
-| `data/Models.kt`, `Catalog.kt`, `PlanChanges.kt` | `DgoCheckout/Data/Models.swift`, `Catalog.swift`, `PlanChanges.swift` |
+| `data/Models.kt`, `Catalog.kt`, `PlanChanges.kt`, `Events.kt` | `DgoCheckout/Data/Models.swift`, `Catalog.swift`, `PlanChanges.swift`, `Events.swift` |
 | `data/SessionRepository.kt` (SharedPreferences + JSON) | `DgoCheckout/Data/SessionRepository.swift` (UserDefaults + Codable, same keys) |
 | `ui/CheckoutViewModel.kt` | `DgoCheckout/UI/CheckoutViewModel.swift` (`@Observable`) |
 | `ui/DgoCheckoutApp.kt` (checkout header, routing) | `DgoCheckout/UI/RootView.swift` |
@@ -59,5 +59,5 @@ xcodebuild -project DgoCheckout.xcodeproj -scheme DgoCheckout \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
-- `DgoCheckoutTests`: 30 unit tests covering pricing, coupons, plan-change rules, saved state and payment validation.
-- `DgoCheckoutUITests`: 10 end-to-end flows on the simulator: Nepal wallet and GetPay purchases, the decline card, Nepal plan changes, Stripe purchase with promo, Stripe downgrade / upgrade / cancel / resume, same-interval upgrade keeping the billing date, ZA and ZC prices, Account and sign out, and the confirmation countdown.
+- `DgoCheckoutTests`: 35 unit tests covering pricing, coupons, plan-change rules, event passes, saved state, dev-toggle region changes and payment validation.
+- `DgoCheckoutUITests`: 13 end-to-end flows on the simulator: Nepal wallet and GetPay purchases, the decline card, Nepal plan changes, Stripe purchase with promo, Stripe downgrade / upgrade / cancel / resume, same-interval upgrade keeping the billing date, ZA and ZC prices, Account and sign out, the confirmation countdown, and exclusive event passes (Nepal wallet without a plan, Stripe alongside a plan, and the `PPV` dev toggle).
