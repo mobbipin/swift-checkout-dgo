@@ -530,12 +530,15 @@ final class CheckoutFlowUITests: XCTestCase {
     }
 
     func test13_DevToggleTurnsExclusiveOff() {
-        tap("devHandle")
-        snap("120-dev-toggle-ppv")
-        tap("dev_PPV")
         openPlansFromHome()
-        XCTAssertFalse(button("catalogTab_Exclusive").exists)
-        snap("121-ppv-off-plans-only")
+        tap("devHandle")
+        XCTAssertTrue(button("catalogTab_Exclusive").exists)
+        snap("120-ppv-on-plans-with-exclusive-tab")
+        tap("dev_PPV")
+        XCTAssertTrue(button("catalogTab_Exclusive").waitForNonExistence(timeout: 3))
+        snap("121-ppv-off-panel-open")
+        tap("devHandle")
+        snap("122-ppv-off-plans-only")
         tap("headerBack")
         openAccount()
         XCTAssertFalse(button("browseExclusive").exists)
